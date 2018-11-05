@@ -58,8 +58,6 @@ function reqJSONP(el_id, url_target, callback=null, params = {} ) {
 	if (callback !== null)
 		source += "callback=" + callback + "&";
 	
-	console.log(source);
-	
 	var s = document.createElement('script');
 	s.src = source;
 	s.id = el_id;
@@ -90,34 +88,40 @@ function requestUuid() {
 	reqJSONP(id, url_target, callback = callback);
 };
 
-async function search() {
-	requestUuid();
+function search(iter = 0) {
+	if (iter == 0)
+		requestUuid();
 	
-	var iter = 0;
+	var search_interval;
 	
-	while (!request_uuid_response.hasOwnProperty("uuid") && iter < 100) {
-		console.log("sleep " + iter.toString());
-		await sleep(1000);
+	if (!request_uuid_response.hasOwnProperty("uuid") && iter < 100) {
+		// recursive
 		iter++;
+		setTimeout(function(){
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 500);
+		return;
 	}
 	
+	clearInterval(search_interval);	
 	search_params.uuid = request_uuid_response["uuid"];
-	console.log(request_uuid_response);
 	
 	for (var opt in airlines_opt) {
 		
 		if (airlines_opt[opt]) {
-			var url_target = "";			
+			var url_target = "";
 			
 			if (opt == "lion") {
 				url_target = url_b2c + "/lion-schedule-json";			
 				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
 			}
-		}
-		
+			
+			if (opt == "sriwijaya") {
+				url_target = url_b2c + "/sriwijaya-schedule-json";
+				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
+			}
+		}		
 	}
-	
-	
 };
 
 
