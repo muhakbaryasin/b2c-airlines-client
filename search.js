@@ -24,16 +24,6 @@ var httpRequestJsonp = function(url_string, webParams) {
 	});
 };
 
-/*
-var requestAirline = function(webParams) {
-	httpRequestJsonp(url_host + ':1234/sriwijaya-schedule-json', webParams);
-	httpRequestJsonp(url_host + ':1234/lion-schedule-json', webParams);
-	// httpRequestJsonp(url_host + ':1234/citilink-schedule-json', webParams);
-	// httpRequestJsonp(url_host + ':1234/airasia-schedule-json', webParams);
-	// httpRequestJsonp(url_host + ':1234/garuda-schedule-json', webParams);
-};
-*/
-
 var requestAirline = function(webParams, searchOpt) {
 	var isUp = false;
 	if (searchOpt === 'lion' || searchOpt === 'all') {
@@ -151,6 +141,7 @@ var searchRequest = function(search_params) {
 		};
 		
 		requestAirline(search_params, BuyerData.search_opt );
+		
 		setTimeout(function(){
 			search_interval = setInterval(searchResult, 1000);
 		}, 500); 
