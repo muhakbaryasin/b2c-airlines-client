@@ -15,7 +15,7 @@ var url_b2c = "http://siptiket.co.id:1234";
 
 var airlines_config_response = {};
 var request_uuid_response = {};
-var request_airlines_response = {};
+var search_response = {};
 
 var airlines_opt = {
 	"lion"	: true, "sriwijaya" : true //tambahkan yang lain
@@ -26,7 +26,7 @@ var search_params = {
 	"child_passenger_number": 0,
 	"depart_city_code": "CGK",
 	"depart_city_name": "Jakarta (cengkareng)",
-	"depart_date": "2018-11-16",
+	"depart_date": "2018-11-17",
 	"depart_type": "oneway",
 	"destination_city_code": "DPS",
 	"destination_city_name": "Denpasar Bali",
@@ -45,6 +45,10 @@ function getAirlinesConfigCb(response) {
 
 function requestUuidCb(response) {
 	request_uuid_response = response;
+}
+
+function searchCb(response) {
+	search_response = response;
 }
 
 function reqJSONP(el_id, url_target, callback=null, params = {} ) {
@@ -88,7 +92,7 @@ function requestUuid() {
 	reqJSONP(id, url_target, callback = callback);
 };
 
-function search(iter = 0) {
+function requestAirlines(iter = 0) {
 	if (iter == 0)
 		requestUuid();
 	
@@ -97,8 +101,9 @@ function search(iter = 0) {
 	if (!request_uuid_response.hasOwnProperty("uuid") && iter < 100) {
 		// recursive
 		iter++;
+		
 		setTimeout(function(){
-			search_interval = setInterval(search(iter = iter), 1000);
+			search_interval = setInterval(requestAirlines(iter = iter), 1000);
 		}, 500);
 		return;
 	}
@@ -123,6 +128,43 @@ function search(iter = 0) {
 		}		
 	}
 };
+
+function search(iter = 0) {
+	console.log(iter);
+	
+
+	var id = "search-id";
+	var url_target = url_b2c + "/result-json";
+	var callback = "searchCb";
+	reqJSONP(id, url_target, callback = callback, params = search_params);
+	
+	var search_interval;
+	console.log(search_response);
+	if (!search_response.hasOwnProperty("progress") && iter < 100) {
+		console.log("masuk sini");
+		// recursive
+		iter++;
+		
+		setTimeout(function(){
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 500);
+		return;
+	}
+	
+	if (search_response.progress.length == 0 && iter < 100) {
+		console.log("masuk sana");
+		// recursive
+		iter++;
+		
+		setTimeout(function(){
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 500);
+		return;
+	}
+	
+	clearInterval(search_interval);
+	search_params.uuid = request_uuid_response["uuid"];
+}
 
 
 
