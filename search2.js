@@ -1,24 +1,12 @@
-function guid() {
-	function s4() {
-		return Math.floor((1 + Math.random()) * 0x10000)
-		  .toString(16)
-		  .substring(1);
-		}	
-	return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-}
-
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 var url_b2c = "http://siptiket.co.id:1234";
-
 var airlines_config_response = {};
 var request_uuid_response = {};
+var request_airlines_response = null;
 var search_response = {};
+var debug_mode = false;
 
 var airlines_opt = {
-	"lion"	: true, "sriwijaya" : true //tambahkan yang lain
+	"lion"	: true, "sriwijaya" : true, "citilink" : true //tambahkan yang lain
 };
 
 var search_params = {
@@ -28,8 +16,8 @@ var search_params = {
 	"depart_city_name": "Jakarta (cengkareng)",
 	"depart_date": "2018-11-17",
 	"depart_type": "oneway",
-	"destination_city_code": "DPS",
-	"destination_city_name": "Denpasar Bali",
+	"destination_city_code": "KDI",
+	"destination_city_name": "Kendari",
 	"infant_passenger_number": 0,
 	"return_date": "2018-11-05"
 };
@@ -37,22 +25,25 @@ var search_params = {
 function removeElById(id_) {
 	var existing_el = document.getElementById(id_);	
     try { existing_el.parentNode.removeChild(existing_el); } catch (err) {  };
+	return;
 };
 
 function getAirlinesConfigCb(response) {
 	airlines_config_response = response;
+	return;
 };
 
 function requestUuidCb(response) {
 	request_uuid_response = response;
+	return;
 }
 
 function searchCb(response) {
 	search_response = response;
+	return;
 }
 
 function reqJSONP(el_id, url_target, callback=null, params = {} ) {
-	removeElById(el_id);
 	var source = url_target + "?";
 	
 	for (var param in params) {
@@ -66,6 +57,8 @@ function reqJSONP(el_id, url_target, callback=null, params = {} ) {
 	s.src = source;
 	s.id = el_id;
 	document.body.appendChild(s);
+	removeElById(el_id);
+	return;
 }
 
 /*function getAirlinesConfig() {
@@ -79,10 +72,12 @@ function reqJSONP(el_id, url_target, callback=null, params = {} ) {
 };*/
 
 function getAirlinesConfig() {
+	airlines_config_response = {};
 	var id = "get-airlines-config";	
 	var url_target = url_b2c + "/get-airlines-config"
 	var callback = "getAirlinesConfigCb";
 	reqJSONP(id, url_target, callback = callback);
+	return;
 }
 
 function requestUuid() {
@@ -90,11 +85,14 @@ function requestUuid() {
 	var url_target = url_b2c + "/request-uuid";
 	var callback = "requestUuidCb";
 	reqJSONP(id, url_target, callback = callback);
+	return;
 };
 
 function requestAirlines(iter = 0) {
-	if (iter == 0)
+	if (iter == 0) {
+		request_airlines_response = null;
 		requestUuid();
+	}
 	
 	var search_interval;
 	
@@ -102,22 +100,21 @@ function requestAirlines(iter = 0) {
 		// recursive
 		iter++;
 		
-		setTimeout(function(){
+		setTimeout(function() {
 			search_interval = setInterval(requestAirlines(iter = iter), 1000);
 		}, 500);
 		return;
 	}
 	
-	clearInterval(search_interval);	
+	clearInterval(search_interval);
 	search_params.uuid = request_uuid_response["uuid"];
 	
 	for (var opt in airlines_opt) {
-		
 		if (airlines_opt[opt]) {
 			var url_target = "";
 			
 			if (opt == "lion") {
-				url_target = url_b2c + "/lion-schedule-json";			
+				url_target = url_b2c + "/lion-schedule-json";
 				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
 			}
 			
@@ -125,74 +122,97 @@ function requestAirlines(iter = 0) {
 				url_target = url_b2c + "/sriwijaya-schedule-json";
 				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
 			}
-		}		
+			
+			if (opt == "citilink") {
+				url_target = url_b2c + "/citilink-schedule-json";
+				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
+			}
+			
+			if (opt == "garuda") {
+				url_target = url_b2c + "/garuda-schedule-json";
+				reqJSONP(opt + "_id" , url_target, callback = null, params = search_params);
+			}
+		}
 	}
+	request_airlines_response = {};
+	return;
 };
 
 function search(iter = 0) {
-	console.log(iter);
+	if (iter == 0) {
+		search_response = {};
+		requestAirlines();		
+	}
 	
-
+	if (!request_uuid_response.hasOwnProperty("uuid") && iter < 100) {
+		// recursive
+		iter++;
+		
+		setTimeout(function() {
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 500);
+		return;
+	}	
+	// uuid udah	
+	
+	if (request_airlines_response == null && iter < 100) {
+		// recursive
+		iter++;
+		
+		setTimeout(function() {
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 500);
+		return;
+	}
+	// request_airline udah
+	
 	var id = "search-id";
 	var url_target = url_b2c + "/result-json";
 	var callback = "searchCb";
 	reqJSONP(id, url_target, callback = callback, params = search_params);
 	
 	var search_interval;
-	console.log(search_response);
+	
+	if (debug_mode)
+		console.log(request_uuid_response);
+	
 	if (!search_response.hasOwnProperty("progress") && iter < 100) {
-		console.log("masuk sini");
 		// recursive
-		iter++;
-		
+		iter++;		
 		setTimeout(function(){
 			search_interval = setInterval(search(iter = iter), 1000);
-		}, 500);
+		}, 1000);
 		return;
 	}
 	
 	if (search_response.progress.length == 0 && iter < 100) {
-		console.log("masuk sana");
 		// recursive
-		iter++;
-		
+		iter++;		
 		setTimeout(function(){
 			search_interval = setInterval(search(iter = iter), 1000);
-		}, 500);
+		}, 1000);
+		return;
+	}
+	
+	var done = true;
+	
+	for (var each_progress in search_response.progress) {
+		if (debug_mode)
+			console.log(search_response.progress[each_progress]);
+		
+		if (search_response.progress[each_progress].step !== search_response.progress[each_progress].max_step)
+			done = done && false;	
+	}
+	
+	if (!done) {
+		iter++;		
+		setTimeout(function(){
+			search_interval = setInterval(search(iter = iter), 1000);
+		}, 1000);
 		return;
 	}
 	
 	clearInterval(search_interval);
-	search_params.uuid = request_uuid_response["uuid"];
+	request_uuid_response = {};
+	return;
 }
-
-
-
-
-/*function xmlHttpRequest() {
-	if (window.XMLHttpRequest) {
-    // code for modern browsers
-		xmlhttp = new XMLHttpRequest();
-	} else {
-		// code for old IE browsers
-		xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-	}
-	return xmlhttp;
-}
-
-function getAirlinesConfig() {
-	callback = ""
-	url_get_config = url_b2c + "/get-airlines-config?" + ;
-	
-	xhr = xmlHttpRequest();
-	
-	xhr.onreadystatechange = function() {
-		if (xhr.readyState == XMLHttpRequest.DONE) {
-			alert(xhr.responseText);
-		}
-	}
-	xhr.open('GET', url_get_config, true);
-	xhr.send(null);
-}
-
-*/
